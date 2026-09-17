@@ -1,0 +1,21 @@
+# Compilación
+*.o
+*.a
+*.so
+mapa_cr
+mapa_cr.exe
+
+# Paquetes y comprimidos
+*.tgz
+*.tar.gz
+*.zip
+
+# Logs y temporales
+*.log
+vgcore.*
+
+# Editores y sistema
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
