@@ -26,6 +26,9 @@ SRC_DIR  = src
 # Archivos fuente
 SRCS     = $(SRC_DIR)/main.c       \
            $(SRC_DIR)/framebuffer.c \
+           $(SRC_DIR)/geometry.c   \
+           $(SRC_DIR)/transform.c  \
+           $(SRC_DIR)/clipping.c   \
            $(SRC_DIR)/stubs.c
 
 # Archivos objeto

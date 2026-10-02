@@ -2,13 +2,13 @@
  * @file stubs.c
  * @brief Implementaciones provisionales (stubs) para compilación limpia.
  *
- * Contiene implementaciones mínimas de todas las funciones declaradas en
- * los headers de los módulos de las Personas 2, 3 y 4, así como las
+ * Contiene implementaciones mínimas de las funciones declaradas en
+ * los headers de los módulos del proyecto, así como las
  * funciones auxiliares del estado de la aplicación.
  *
  * Estas funciones serán reemplazadas progresivamente por las
  * implementaciones reales de cada compañero.  Mientras tanto, permiten
- * que el proyecto compile y enlace correctamente desde el día 1.
+ * que el proyecto compile y enlace correctamente.
  *
  * También incluye un polígono de prueba hardcodeado para verificar
  * el pipeline de renderizado.
@@ -18,164 +18,15 @@
 
 #include "geometry.h"
 #include "app_state.h"
-#include "transform.h"
-#include "clipping.h"
 #include "raster.h"
 #include "texture.h"
 #include "framebuffer.h"
+#include "clipping.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <GL/glut.h>
-
-/* ========================================================================= */
-/*  Stubs — geometry.h (Persona 2)                                           */
-/* ========================================================================= */
-
-int province_load(const char *filepath, Province *out)
-{
-    (void)filepath;
-    (void)out;
-    fprintf(stderr, "[STUB] province_load: no implementado aun.\n");
-    return -1;
-}
-
-void polygon_free(Polygon *poly)
-{
-    if (poly && poly->vertices) {
-        free(poly->vertices);
-        poly->vertices = NULL;
-        poly->count    = 0;
-    }
-}
-
-void province_free(Province *prov)
-{
-    if (!prov) {
-        return;
-    }
-    if (prov->polygons) {
-        int i;
-        for (i = 0; i < prov->polygon_count; i++) {
-            polygon_free(&prov->polygons[i]);
-        }
-        free(prov->polygons);
-        prov->polygons      = NULL;
-        prov->polygon_count = 0;
-    }
-}
-
-void province_compute_bbox(Province *prov)
-{
-    int i, j;
-
-    if (!prov || prov->polygon_count == 0) {
-        return;
-    }
-
-    prov->bbox.min_x =  1e30f;
-    prov->bbox.min_y =  1e30f;
-    prov->bbox.max_x = -1e30f;
-    prov->bbox.max_y = -1e30f;
-
-    for (i = 0; i < prov->polygon_count; i++) {
-        for (j = 0; j < prov->polygons[i].count; j++) {
-            float x = prov->polygons[i].vertices[j].x;
-            float y = prov->polygons[i].vertices[j].y;
-            if (x < prov->bbox.min_x) prov->bbox.min_x = x;
-            if (y < prov->bbox.min_y) prov->bbox.min_y = y;
-            if (x > prov->bbox.max_x) prov->bbox.max_x = x;
-            if (y > prov->bbox.max_y) prov->bbox.max_y = y;
-        }
-    }
-}
-
-BoundingBox provinces_global_bbox(const Province *provinces, int count)
-{
-    BoundingBox bb = {1e30f, 1e30f, -1e30f, -1e30f};
-    int i;
-
-    for (i = 0; i < count; i++) {
-        if (provinces[i].bbox.min_x < bb.min_x) bb.min_x = provinces[i].bbox.min_x;
-        if (provinces[i].bbox.min_y < bb.min_y) bb.min_y = provinces[i].bbox.min_y;
-        if (provinces[i].bbox.max_x > bb.max_x) bb.max_x = provinces[i].bbox.max_x;
-        if (provinces[i].bbox.max_y > bb.max_y) bb.max_y = provinces[i].bbox.max_y;
-    }
-
-    return bb;
-}
-
-/* ========================================================================= */
-/*  Stubs — transform.h (Persona 2)                                         */
-/* ========================================================================= */
-
-Vertex transform_vertex(Vertex v, const View *view, int screen_w, int screen_h)
-{
-    /*
-     * Stub básico: simplemente escala y centra el vértice.
-     * La implementación real incluirá rotación, zoom y pan completos.
-     */
-    Vertex out;
-    (void)view;
-
-    out.x = v.x * (float)screen_w;
-    out.y = v.y * (float)screen_h;
-    return out;
-}
-
-Polygon transform_polygon(const Polygon *poly, const View *view,
-                           int screen_w, int screen_h)
-{
-    Polygon out;
-    int i;
-
-    out.count    = poly->count;
-    out.vertices = (Vertex *)malloc(sizeof(Vertex) * (size_t)out.count);
-    if (!out.vertices) {
-        out.count = 0;
-        return out;
-    }
-
-    for (i = 0; i < out.count; i++) {
-        out.vertices[i] = transform_vertex(poly->vertices[i], view,
-                                           screen_w, screen_h);
-    }
-
-    return out;
-}
-
-/* ========================================================================= */
-/*  Stubs — clipping.h (Persona 2)                                          */
-/* ========================================================================= */
-
-int clip_line(Vertex *p0, Vertex *p1,
-              float xmin, float ymin, float xmax, float ymax)
-{
-    (void)p0; (void)p1;
-    (void)xmin; (void)ymin; (void)xmax; (void)ymax;
-    /* Stub: siempre visible. */
-    return 1;
-}
-
-Polygon clip_polygon(const Polygon *poly,
-                     float xmin, float ymin, float xmax, float ymax)
-{
-    Polygon out;
-    (void)xmin; (void)ymin; (void)xmax; (void)ymax;
-
-    /* Stub: retorna una copia sin recorte. */
-    out.count    = poly->count;
-    out.vertices = (Vertex *)malloc(sizeof(Vertex) * (size_t)out.count);
-    if (out.vertices) {
-        memcpy(out.vertices, poly->vertices,
-               sizeof(Vertex) * (size_t)out.count);
-    } else {
-        out.count = 0;
-    }
-
-    return out;
-}
 
 /* ========================================================================= */
 /*  Stubs — raster.h (Persona 3)                                            */
@@ -361,11 +212,23 @@ void app_state_load_data(AppState *state)
     }
 
     if (state->provinces_loaded > 0) {
+        float map_w, map_h, scale;
+
         state->global_bbox = provinces_global_bbox(state->provinces,
-                                                   state->provinces_loaded);
+                                                   NUM_PROVINCES);
         /* Centrar vista en el mapa cargado */
         state->view.center_x = (state->global_bbox.min_x + state->global_bbox.max_x) * 0.5f;
         state->view.center_y = (state->global_bbox.min_y + state->global_bbox.max_y) * 0.5f;
+        map_w = state->global_bbox.max_x - state->global_bbox.min_x;
+        map_h = state->global_bbox.max_y - state->global_bbox.min_y;
+
+        if (map_w > 0.0f && map_h > 0.0f) {
+            float scale_x = (float)WINDOW_WIDTH  * 0.95f / map_w;
+            float scale_y = (float)WINDOW_HEIGHT * 0.95f / map_h;
+            scale = (scale_x < scale_y) ? scale_x : scale_y;
+            state->view.zoom = scale;
+        }
+
         state->default_view  = state->view;
     }
 }
@@ -440,4 +303,3 @@ Polygon *get_test_polygon(void)
 {
     return &test_star_polygon;
 }
-
