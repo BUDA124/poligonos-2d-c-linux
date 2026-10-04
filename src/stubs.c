@@ -32,15 +32,15 @@
 /*  Stubs — raster.h (Persona 3)                                            */
 /* ========================================================================= */
 
-void draw_line_bresenham(Framebuffer *fb,
+/*void draw_line_bresenham(Framebuffer *fb,
                          int x0, int y0, int x1, int y1,
                          Color color)
 {
-    /*
-     * Implementación simplificada de Bresenham para el arnés de prueba.
-     * La Persona 3 la reemplazará con la versión optimizada para todos
-     * los octantes.
-     */
+    
+    //Implementación simplificada de Bresenham para el arnés de prueba.
+    //La Persona 3 la reemplazará con la versión optimizada para todos
+    //los octantes.
+    
     int dx  = abs(x1 - x0);
     int dy  = abs(y1 - y0);
     int sx  = (x0 < x1) ? 1 : -1;
@@ -79,7 +79,7 @@ void draw_polygon_wireframe(Framebuffer *fb, const Polygon *poly, Color color)
         Vertex p0 = poly->vertices[i];
         Vertex p1 = poly->vertices[(i + 1) % poly->count];
 
-        /* Recortar segmento contra los bordes del framebuffer */
+        //Recortar segmento contra los bordes del framebuffer 
         if (clip_line(&p0, &p1, 0.0f, 0.0f,
                       (float)(fb->width - 1), (float)(fb->height - 1))) {
             draw_line_bresenham(fb,
@@ -94,7 +94,7 @@ void fill_polygon_solid(Framebuffer *fb, const Polygon *poly, Color color)
 {
     (void)fb; (void)poly; (void)color;
     fprintf(stderr, "[STUB] fill_polygon_solid: no implementado aun.\n");
-}
+}*/
 
 /* ========================================================================= */
 /*  Stubs — texture.h (Persona 4)                                           */
