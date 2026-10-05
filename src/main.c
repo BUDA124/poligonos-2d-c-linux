@@ -207,19 +207,48 @@ static void keyboard_callback(unsigned char key, int x, int y)
 
     /* Zoom con + y - */
     case '+':
-    case '=':
-        g_state.view.zoom += ZOOM_STEP;
-        if (g_state.view.zoom > 10.0f) g_state.view.zoom = 10.0f;
-        printf("Zoom: %.2f\n", g_state.view.zoom);
-        break;
-    case '-':
-    case '_':
-        g_state.view.zoom -= ZOOM_STEP;
-        if (g_state.view.zoom < 0.1f) g_state.view.zoom = 0.1f;
-        printf("Zoom: %.2f\n", g_state.view.zoom);
-        break;
+    case '=': {
+        float speed = app_state_get_speed();
+        float factor;
 
-    /* Rotación con r/R. */
+        if (speed == SPEED_FAST)
+            factor = 1.25f;
+        else if (speed == SPEED_SLOW)
+            factor = 1.01f;
+        else
+            factor = 1.10f;
+
+        g_state.view.zoom *= factor;
+
+        if (g_state.view.zoom > 10.0f)
+            g_state.view.zoom = 10.0f;
+
+        /*printf("Zoom: %.4f\n", g_state.view.zoom);*/
+        break;
+    }
+
+    case '-':
+    case '_': {
+        float speed = app_state_get_speed();
+        float factor;
+
+        if (speed == SPEED_FAST)
+            factor = 1.25f;
+        else if (speed == SPEED_SLOW)
+            factor = 1.01f;
+        else
+            factor = 1.10f;
+
+        g_state.view.zoom /= factor;
+
+        if (g_state.view.zoom < 0.0001f)
+            g_state.view.zoom = 0.0001f;
+
+        /*printf("Zoom: %.4f\n", g_state.view.zoom);*/
+        break;
+    }
+
+        /* Rotación con r/R. */
     case 'r':
         g_state.view.angle += ROTATE_STEP;
         printf("Rotacion: %.2f rad\n", g_state.view.angle);
