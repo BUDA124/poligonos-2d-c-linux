@@ -98,7 +98,7 @@ void fill_polygon_solid(Framebuffer *fb, const Polygon *poly, Color color)
 
 /* ========================================================================= */
 /*  Stubs — texture.h (Persona 4)                                           */
-/* ========================================================================= */
+/* ========================================================================= 
 
 int texture_load_avs(const char *filepath, Texture *out)
 {
@@ -130,7 +130,7 @@ void fill_polygon_texture(Framebuffer *fb, const Polygon *poly,
     (void)fb; (void)poly; (void)tex; (void)bbox;
     fprintf(stderr, "[STUB] fill_polygon_texture: no implementado aun.\n");
 }
-
+*/
 /* ========================================================================= */
 /*  app_state.h — Implementación                                            */
 /* ========================================================================= */
