@@ -1,7 +1,6 @@
 /**
  * @file texture.c
  * @brief Carga de texturas AVS y relleno texturizado de polígonos.
- *
  */
 
 #include "texture.h"
@@ -13,36 +12,57 @@
 #include <math.h>
 
 /* ========================================================================= */
-/*  Lectura de enteros Big Endian                                           */
+/*  Utilidades                                                               */
 /* ========================================================================= */
 
 /**
- * @brief Lee un entero unsigned de 32 bits en Big Endian.
- *
- * El formato AVS almacena width y height utilizando 4 bytes Big Endian.
+ * @brief Lee un entero de 32 bits almacenado en Big Endian.
  */
 static int read_uint32_be(FILE *file, uint32_t *value)
 {
     unsigned char bytes[4];
 
-    if (!file || !value) {
+    if (!file || !value)
         return -1;
-    }
 
-    if (fread(bytes, 1, 4, file) != 4) {
+    if (fread(bytes, 1, 4, file) != 4)
         return -1;
-    }
 
     *value = ((uint32_t)bytes[0] << 24) |
              ((uint32_t)bytes[1] << 16) |
              ((uint32_t)bytes[2] << 8)  |
-             ((uint32_t)bytes[3]);
+             (uint32_t)bytes[3];
 
     return 0;
 }
 
+/**
+ * @brief Envuelve un índice dentro de un rango [0, size).
+ *
+ * Funciona también con índices negativos.
+ *
+ * Ejemplo con size = 800:
+ *   800 -> 0
+ *   801 -> 1
+ *   -1  -> 799
+ */
+static int wrap_index(int value, int size)
+{
+    int result;
+
+    if (size <= 0)
+        return 0;
+
+    result = value % size;
+
+    if (result < 0)
+        result += size;
+
+    return result;
+}
+
 /* ========================================================================= */
-/*  Carga de AVS                                                            */
+/*  Carga de AVS                                                             */
 /* ========================================================================= */
 
 int texture_load_avs(const char *filepath, Texture *out)
@@ -53,9 +73,8 @@ int texture_load_avs(const char *filepath, Texture *out)
     size_t pixel_count;
     size_t data_size;
 
-    if (!filepath || !out) {
+    if (!filepath || !out)
         return -1;
-    }
 
     out->width = 0;
     out->height = 0;
@@ -63,32 +82,34 @@ int texture_load_avs(const char *filepath, Texture *out)
     out->pixels = NULL;
 
     file = fopen(filepath, "rb");
-    if (!file) {
+
+    if (!file)
         return -1;
-    }
 
     /*
-     * AVS:
+     * Formato AVS utilizado por el proyecto:
      *
      * 4 bytes -> width
      * 4 bytes -> height
-     * da -> píxeles A R G B
+     * 4 bytes por píxel -> A R G B
      */
     if (read_uint32_be(file, &width) != 0 ||
         read_uint32_be(file, &height) != 0) {
+
         fclose(file);
         return -1;
     }
 
-    /* restricciones */
-    if (width == 0 || height == 0 ||
+    if (width == 0 ||
+        height == 0 ||
         width > (uint32_t)INT_MAX ||
         height > (uint32_t)INT_MAX) {
+
         fclose(file);
         return -1;
     }
 
-
+    /* Evitar overflow al calcular width * height. */
     if ((size_t)width > SIZE_MAX / (size_t)height) {
         fclose(file);
         return -1;
@@ -96,6 +117,7 @@ int texture_load_avs(const char *filepath, Texture *out)
 
     pixel_count = (size_t)width * (size_t)height;
 
+    /* Cada píxel AVS tiene 4 bytes: A R G B. */
     if (pixel_count > SIZE_MAX / 4u) {
         fclose(file);
         return -1;
@@ -110,12 +132,10 @@ int texture_load_avs(const char *filepath, Texture *out)
         return -1;
     }
 
-    /*
-     * Leer todos los píxeles directamente.
-     */
     if (fread(out->pixels, 1, data_size, file) != data_size) {
         free(out->pixels);
         out->pixels = NULL;
+
         fclose(file);
         return -1;
     }
@@ -130,14 +150,13 @@ int texture_load_avs(const char *filepath, Texture *out)
 }
 
 /* ========================================================================= */
-/*  Liberación                                                              */
+/*  Liberación                                                               */
 /* ========================================================================= */
 
 void texture_free(Texture *tex)
 {
-    if (!tex) {
+    if (!tex)
         return;
-    }
 
     free(tex->pixels);
 
@@ -148,22 +167,8 @@ void texture_free(Texture *tex)
 }
 
 /* ========================================================================= */
-/*  Muestreo de textura                                                     */
+/*  Muestreo de textura                                                      */
 /* ========================================================================= */
-
-/**
- * @brief Envuelve una coordenada para mantenerla dentro de [0,1).
- */
-static float wrap_coordinate(float value)
-{
-    value = fmodf(value, 1.0f);
-
-    if (value < 0.0f) {
-        value += 1.0f;
-    }
-
-    return value;
-}
 
 Color texture_sample(const Texture *tex, float u, float v)
 {
@@ -173,33 +178,39 @@ Color texture_sample(const Texture *tex, float u, float v)
     int y;
     size_t index;
 
-    if (!tex || !tex->pixels ||
-        tex->width <= 0 || tex->height <= 0 ||
+    if (!tex ||
+        !tex->pixels ||
+        tex->width <= 0 ||
+        tex->height <= 0 ||
         tex->channels < 3) {
+
         return black;
     }
 
-
-    u = wrap_coordinate(u);
-    v = wrap_coordinate(v);
-
     /*
-     * u = 0.0 -> primera columna
-     * u -> 1.0 -> última columna
+     * Las coordenadas UV se repiten cada 1.0.
+     *
+     * 0.0 -> 0.0
+     * 1.0 -> 0.0
+     * 1.2 -> 0.2
+     * -0.1 -> 0.9
      */
+    u = u - floorf(u);
+    v = v - floorf(v);
+
     x = (int)(u * (float)tex->width);
-
-    if (x >= tex->width) {
-        x = tex->width - 1;
-    }
-
-
     y = (int)(v * (float)tex->height);
 
-    if (y >= tex->height) {
-        y = tex->height - 1;
-    }
+    /*
+     * Seguridad ante errores de redondeo.
+     */
+    x = wrap_index(x, tex->width);
+    y = wrap_index(y, tex->height);
 
+    /*
+     * AVS almacena la imagen de arriba hacia abajo,
+     * mientras nuestro framebuffer usa origen abajo a la izquierda.
+     */
     y = tex->height - 1 - y;
 
     index = ((size_t)y * (size_t)tex->width +
@@ -207,20 +218,16 @@ Color texture_sample(const Texture *tex, float u, float v)
 
     /*
      * AVS:
-     * pixels[index + 0] = A
-     * pixels[index + 1] = R
-     * pixels[index + 2] = G
-     * pixels[index + 3] = B
-     * El framebuffer solamente necesita RGB.
+     *   [0] = A
+     *   [1] = R
+     *   [2] = G
+     *   [3] = B
      */
     if (tex->channels >= 4) {
         black.r = tex->pixels[index + 1];
         black.g = tex->pixels[index + 2];
         black.b = tex->pixels[index + 3];
     } else {
-        /*
-         * Soporte adicional por seguridad para una textura RGB.
-         */
         black.r = tex->pixels[index + 0];
         black.g = tex->pixels[index + 1];
         black.b = tex->pixels[index + 2];
@@ -230,7 +237,7 @@ Color texture_sample(const Texture *tex, float u, float v)
 }
 
 /* ========================================================================= */
-/*  Relleno texturizado                                                     */
+/*  Relleno texturizado                                                      */
 /* ========================================================================= */
 
 void fill_polygon_texture(Framebuffer *fb,
@@ -238,119 +245,120 @@ void fill_polygon_texture(Framebuffer *fb,
                           const Texture *tex,
                           const BoundingBox *bbox)
 {
-    float min_x;
-    float max_x;
-    float min_y;
-    float max_y;
-
-    int y_start;
-    int y_end;
-
-    int i;
-
     typedef struct {
-        float y_min;
-        float y_max;
-        float x_at_y_min;
+        int y_min;
+        int y_max;
+        float x;
         float dx_dy;
-    } TextureEdge;
+    } Edge;
 
-    TextureEdge *edges;
-    TextureEdge *active;
+    Edge *edges;
+    Edge *active;
 
     int edge_count = 0;
     int active_count;
 
-    if (!fb || !poly || !poly->vertices ||
-        poly->count < 3 ||
-        !tex || !tex->pixels ||
-        tex->width <= 0 || tex->height <= 0) {
-        return;
-    }
+    int min_y;
+    int max_y;
 
-    /*
-     * Por seguridad, calculamos aquí el bounding box del polígono
-     * que realmente estamos rasterizando (main usa universales). 
-     */
+    int i;
+    int y;
+
     (void)bbox;
 
-    min_x = poly->vertices[0].x;
-    max_x = poly->vertices[0].x;
-    min_y = poly->vertices[0].y;
-    max_y = poly->vertices[0].y;
+    if (!fb ||
+        !poly ||
+        !poly->vertices ||
+        poly->count < 3 ||
+        !tex ||
+        !tex->pixels ||
+        tex->width <= 0 ||
+        tex->height <= 0) {
+
+        return;
+    }
+
+    /* ------------------------------------------------------------- */
+    /* Bounding box vertical del polígono.                           */
+    /* ------------------------------------------------------------- */
+
+    min_y = (int)floorf(poly->vertices[0].y);
+    max_y = (int)ceilf(poly->vertices[0].y);
 
     for (i = 1; i < poly->count; i++) {
-        if (poly->vertices[i].x < min_x)
-            min_x = poly->vertices[i].x;
+        int vertex_min_y = (int)floorf(poly->vertices[i].y);
+        int vertex_max_y = (int)ceilf(poly->vertices[i].y);
 
-        if (poly->vertices[i].x > max_x)
-            max_x = poly->vertices[i].x;
+        if (vertex_min_y < min_y)
+            min_y = vertex_min_y;
 
-        if (poly->vertices[i].y < min_y)
-            min_y = poly->vertices[i].y;
-
-        if (poly->vertices[i].y > max_y)
-            max_y = poly->vertices[i].y;
+        if (vertex_max_y > max_y)
+            max_y = vertex_max_y;
     }
 
     /*
-     * Limitar las scanlines al framebuffer.
+     * El framebuffer es finito.
+     * No necesitamos procesar scanlines que están fuera.
      */
-    y_start = (int)ceilf(min_y);
+    if (min_y < 0)
+        min_y = 0;
 
-    if (y_start < 0)
-        y_start = 0;
+    if (max_y >= fb->height)
+        max_y = fb->height - 1;
 
-    y_end = (int)floorf(max_y);
-
-    if (y_end >= fb->height)
-        y_end = fb->height - 1;
-
-    if (y_start > y_end) {
+    if (min_y > max_y)
         return;
-    }
 
-    /*
-     * Una arista por cada lado del polígono.
-     * Las aristas horizontales se ignoran.
-     */
-    edges = (TextureEdge *)malloc(
-        sizeof(TextureEdge) * (size_t)poly->count
+    /* ------------------------------------------------------------- */
+    /* Construir tabla de aristas.                                  */
+    /* ------------------------------------------------------------- */
+
+    edges = (Edge *)malloc(
+        sizeof(Edge) * (size_t)poly->count
     );
 
-    if (!edges) {
+    if (!edges)
         return;
-    }
 
     for (i = 0; i < poly->count; i++) {
         int next = (i + 1) % poly->count;
 
-        Vertex a = poly->vertices[i];
-        Vertex b = poly->vertices[next];
+        int x0 = (int)poly->vertices[i].x;
+        int y0 = (int)poly->vertices[i].y;
 
-        if (a.y == b.y) {
+        int x1 = (int)poly->vertices[next].x;
+        int y1 = (int)poly->vertices[next].y;
+
+        /*
+         * Los bordes horizontales se ignoran,
+         */
+        if (y0 == y1)
             continue;
-        }
 
-        if (a.y < b.y) {
-            edges[edge_count].y_min = a.y;
-            edges[edge_count].y_max = b.y;
-            edges[edge_count].x_at_y_min = a.x;
+        if (y0 < y1) {
+            edges[edge_count].y_min = y0;
+            edges[edge_count].y_max = y1;
+            edges[edge_count].x = (float)x0;
             edges[edge_count].dx_dy =
-                (b.x - a.x) / (b.y - a.y);
+                (float)(x1 - x0) / (float)(y1 - y0);
         } else {
-            edges[edge_count].y_min = b.y;
-            edges[edge_count].y_max = a.y;
-            edges[edge_count].x_at_y_min = b.x;
+            edges[edge_count].y_min = y1;
+            edges[edge_count].y_max = y0;
+            edges[edge_count].x = (float)x1;
             edges[edge_count].dx_dy =
-                (a.x - b.x) / (a.y - b.y);
+                (float)(x0 - x1) / (float)(y0 - y1);
         }
 
         edge_count++;
     }
 
-    active = (TextureEdge *)malloc(
-        sizeof(TextureEdge) * (size_t)edge_count
+    if (edge_count == 0) {
+        free(edges);
+        return;
+    }
+
+    active = (Edge *)malloc(
+        sizeof(Edge) * (size_t)edge_count
     );
 
     if (!active) {
@@ -358,97 +366,88 @@ void fill_polygon_texture(Framebuffer *fb,
         return;
     }
 
-    /*
-     * Procesar cada scanline.
-     */
-    for (int y = y_start; y <= y_end; y++) {
-        float scan_y = (float)y;
-        int x;
+    /* ------------------------------------------------------------- */
+    /* Scanline.                                                      */
+    /* ------------------------------------------------------------- */
+
+    for (y = min_y; y <= max_y; y++) {
 
         active_count = 0;
 
         /*
-         * Buscar las aristas que intersectan la scanline.
+         * Encontrar intersecciones de la scanline con las aristas.
          */
         for (i = 0; i < edge_count; i++) {
-            if (scan_y >= edges[i].y_min &&
-                scan_y < edges[i].y_max) {
+
+            if (y >= edges[i].y_min &&
+                y < edges[i].y_max) {
 
                 active[active_count] = edges[i];
 
-                active[active_count].x_at_y_min =
-                    edges[i].x_at_y_min +
+                active[active_count].x =
+                    edges[i].x +
                     edges[i].dx_dy *
-                    (scan_y - edges[i].y_min);
+                    (float)(y - edges[i].y_min);
 
                 active_count++;
             }
         }
 
-        /*
-         * Ordenar intersecciones de izquierda a derecha.
-         */
+        /* --------------------------------------------------------- */
+        /* Ordenar intersecciones.                                  */
+        /* --------------------------------------------------------- */
+
         for (i = 0; i < active_count - 1; i++) {
             int j;
 
             for (j = i + 1; j < active_count; j++) {
-                if (active[j].x_at_y_min <
-                    active[i].x_at_y_min) {
 
-                    TextureEdge temp = active[i];
+                if (active[j].x < active[i].x) {
+                    Edge temp = active[i];
                     active[i] = active[j];
                     active[j] = temp;
                 }
             }
         }
 
-        /*
-         * Cada par de intersecciones define un segmento interior.
-         */
+        /* --------------------------------------------------------- */
+        /* Rellenar entre pares.                                    */
+        /* --------------------------------------------------------- */
+
         for (i = 0; i + 1 < active_count; i += 2) {
-            int x_left;
-            int x_right;
 
-            x_left = (int)ceilf(
-                active[i].x_at_y_min
-            );
+            int x_start = (int)ceilf(active[i].x);
+            int x_end   = (int)floorf(active[i + 1].x);
 
-            x_right = (int)floorf(
-                active[i + 1].x_at_y_min
-            );
+            int x;
 
-            if (x_left < 0)
-                x_left = 0;
+            if (x_start < 0)
+                x_start = 0;
 
-            if (x_right >= fb->width)
-                x_right = fb->width - 1;
+            if (x_end >= fb->width)
+                x_end = fb->width - 1;
 
-            if (x_left > x_right)
+            if (x_start > x_end)
                 continue;
 
-            /*
-             * Pintar todos los píxeles del segmento.
-             */
-            for (x = x_left; x <= x_right; x++) {
-                float u;
-                float v;
-                Color color;
+            for (x = x_start; x <= x_end; x++) {
 
-                if (max_x > min_x) {
-                    u = ((float)x - min_x) /
-                        (max_x - min_x);
-                } else {
-                    u = 0.0f;
-                }
+                /*
+                 * Convertimos el píxel del framebuffer a UV.
+                 *
+                 * Al dividir entre el tamaño de la textura:
+                 *
+                 * x = 0   -> u = 0.0
+                 * x = TH  -> u = 1.0 -> vuelve a 0
+                 *
+                 * Esto reproduce:
+                 *
+                 *     TEXTURA[x % TH][y % TV]
+                 */
+                float u = (float)x / (float)tex->width;
+                float v = (float)y / (float)tex->height;
 
-                if (max_y > min_y) {
-                    v = ((float)y - min_y) /
-                        (max_y - min_y);
-                } else {
-                    v = 0.0f;
-                }
-
-                color = texture_sample(tex, u, v);
+                Color color = texture_sample(tex, u, v);
 
                 framebuffer_put_pixel(
                     fb,

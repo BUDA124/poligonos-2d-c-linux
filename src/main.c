@@ -251,11 +251,11 @@ static void keyboard_callback(unsigned char key, int x, int y)
         /* Rotación con r/R. */
     case 'r':
         g_state.view.angle += ROTATE_STEP;
-        printf("Rotacion: %.2f rad\n", g_state.view.angle);
+        /*printf("Rotacion: %.2f rad\n", g_state.view.angle);*/
         break;
     case 'R':
         g_state.view.angle -= ROTATE_STEP;
-        printf("Rotacion: %.2f rad\n", g_state.view.angle);
+        /*printf("Rotacion: %.2f rad\n", g_state.view.angle);*/
         break;
 
     /* Salida limpia. */
